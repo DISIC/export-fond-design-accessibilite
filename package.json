@@ -1,0 +1,10 @@
+{
+  "name": "ftap-airtable-demarches-simplifiees",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Adrien Boutigny <adrien@slash-tmp.dev>",
+  "dependencies": {
+    "node-fetch": "^3.3.1"
+  },
+  "type": "module"
+}
