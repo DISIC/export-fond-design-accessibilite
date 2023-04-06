@@ -2,10 +2,14 @@
  * @file Automatically add columns to airtable base based on fields returned by
  * demarches-simplifiees.fr API.
  *
- * *Note*: It's only to create columns which can be mapped to the `demarche.dossiers.nodes.champs` items. Other columns have to be created manually.
+ * __Note__: The fields generated from the `champDescriptors` items all have type
+ * `singleLineText` by default. This is because the API doesnt return the type
+ * of the field (short text, long text, number, date...)
+ * You're free to manually change the types in Airtable.
  */
 
 import got from "got";
+import _ from "lodash-es";
 
 const {
   DS_API_TOKEN,
@@ -17,11 +21,9 @@ const {
 const query = `
   query Request {
     demarche(number: 70307) {
-      dossiers {
-        nodes {
-          champs {
-            label
-          }
+      publishedRevision {
+        champDescriptors {
+          label
         }
       }
     }
@@ -30,10 +32,8 @@ const query = `
 
 /**
  * Fetch data from demarches-simplifiees.fr API
- *
- * TODO: handle pagination
  */
-async function fetchDosiers() {
+async function fetchFieldDescriptions() {
   console.log("⏳ Fetching data...");
   return got
     .post("https://www.demarches-simplifiees.fr/api/v2/graphql", {
@@ -52,25 +52,41 @@ async function fetchDosiers() {
 const NEW_COLUMN_URL = `https://api.airtable.com/v0/meta/bases/${AIRTABLE_BASE_ID}/tables/${AIRTABLE_TABLE_ID}/fields`;
 
 async function main() {
-  const formsData = await fetchDosiers();
+  const data = await fetchFieldDescriptions();
 
-  const form = formsData.data.demarche.dossiers.nodes.at(0);
+  const fieldDescriptions =
+    data.data.demarche.publishedRevision.champDescriptors;
 
-  if (!form) {
-    throw "The API needs to return at least one form. None were returned.";
-  }
+  const columnDefinitions = _.uniqBy(
+    [
+      {
+        name: "Statut",
+        type: "singleLineText",
+      },
+      {
+        name: "Demandeur",
+        type: "singleLineText",
+      },
+      {
+        name: "Demandeur (SIRET)",
+        type: "singleLineText",
+      },
+      ...fieldDescriptions.map((c) => ({
+        name: c.label,
+        type: "singleLineText",
+      })),
+    ],
+    _.property("name")
+  );
 
-  for (let i = 0; i < form.champs.length; i++) {
-    console.log('Creating the "', field.label, '" field...');
-    const field = form.champs[i];
+  for (let i = 0; i < columnDefinitions.length; i++) {
+    const definition = columnDefinitions[i];
+    console.log('Creating the "', definition.name, '" field...');
     await got.post(NEW_COLUMN_URL, {
       headers: {
         Authorization: `Bearer ${AIRTABLE_ACCESS_TOKEN}`,
       },
-      json: {
-        name: field.label,
-        type: "singleLineText",
-      },
+      json: definition,
     });
   }
 
