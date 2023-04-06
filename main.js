@@ -51,6 +51,9 @@ const query = `
           dateSuppressionParAdministration
           dateSuppressionParUsager
           dateTraitement
+          pdf {
+            url
+          }
         }
       }
     }
@@ -104,6 +107,7 @@ function buildAirtableUpdateBody(dsData) {
         fields: {
           ID: dossier.id,
           Statut: dossier.state,
+          PDF: dossier.pdf.url,
           Demandeur: demandeur,
           "Demandeur (SIRET)": demandeurSiret,
           ...Object.fromEntries(

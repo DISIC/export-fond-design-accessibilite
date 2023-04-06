@@ -64,6 +64,10 @@ async function main() {
         type: "singleLineText",
       },
       {
+        name: "PDF",
+        type: "url",
+      },
+      {
         name: "Demandeur",
         type: "singleLineText",
       },
