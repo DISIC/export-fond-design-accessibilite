@@ -19,17 +19,49 @@ const query = `
           id
           state
           champs {
-            id
             label
             stringValue
           }
+          demandeur {
+            __typename
+            ... on PersonneMorale {
+              siret
+              entreprise {
+                raisonSociale
+              }
+              association {
+                titre
+                
+              }
+            }
+            ... on PersonneMoraleIncomplete {
+              siret
+            }
+            ... on PersonnePhysique {
+              nom
+              prenom
+              civilite
+            }
+          }
+          dateDepot
+          dateDerniereModification
+          dateExpiration
+          datePassageEnConstruction
+          datePassageEnInstruction
+          dateSuppressionParAdministration
+          dateSuppressionParUsager
+          dateTraitement
         }
       }
     }
   }
 `;
 
-/** Fetch data from demarches-simplifiees.fr API */
+/**
+ * Fetch data from demarches-simplifiees.fr API
+ *
+ * TODO: handle pagination
+ */
 async function fetchDosiers() {
   console.log("⏳ Fetching data...");
   return got
@@ -46,47 +78,61 @@ async function fetchDosiers() {
     .json();
 }
 
-function transformDossierData(data) {
-  console.log("⚙️ Transforming data...");
+function buildAirtableUpdateBody(dsData) {
+  console.log("⚙️  Building airtable PATCH body...");
+
   return {
-    records: data.data.demarche.dossiers.nodes.map((dossier) => {
-      // console.log(dossier);
+    typecast: true,
+    performUpsert: {
+      fieldsToMergeOn: ["ID"],
+    },
+    records: dsData.data.demarche.dossiers.nodes.map((dossier) => {
+      let demandeur;
+      let demandeurSiret;
+      if (dossier.demandeur.__typename === "PersonneMorale") {
+        demandeur =
+          dossier.demandeur.entreprise?.raisonSociale ||
+          dossier.demandeur.association?.titre;
+        demandeurSiret = dossier.demandeur.siret;
+      } else if (dossier.demandeur.__typename === "PersonnePhysique") {
+        demander = `${dossier.demandeur.civilite} ${dossier.demandeur.prenom} ${dossier.demandeur.nom}`;
+      } else if (dossier.demandeur.__typename === "PersonneMoraleIncomplete") {
+        demandeurSiret = dossier.demandeur.siret;
+      }
+
       return {
         fields: {
           ID: dossier.id,
-          "Porteur du projet": dossier.champs.find(
-            (c) => c.label === "Nom et prénom du porteur de projet"
-          ).stringValue,
-          "Fonction du porteur de projet": dossier.champs.find(
-            (c) => c.label === "Fonction du porteur de projet"
-          ).stringValue,
-          "Email du porteur de projet": dossier.champs.find(
-            (c) => c.label === "Email du porteur de projet"
-          ).stringValue,
+          Statut: dossier.state,
+          Demandeur: demandeur,
+          "Demandeur (SIRET)": demandeurSiret,
+          ...Object.fromEntries(
+            dossier.champs.map((c) => [c.label, c.stringValue])
+          ),
         },
       };
     }),
   };
 }
 
-async function uploadDossiers(data) {
-  console.log("Uploading data...");
+async function uploadDossiers(body) {
+  console.log("⏳ Uploading data...");
 
-  await got.post(
+  await got.patch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_ID}`,
     {
       headers: {
         Authorization: `Bearer ${AIRTABLE_ACCESS_TOKEN}`,
       },
-      json: data,
+      json: body,
     }
   );
 }
 
 async function main() {
   const data = await fetchDosiers();
-  const transformedData = transformDossierData(data);
-  await uploadDossiers(transformedData);
+  const airtableBody = buildAirtableUpdateBody(data);
+  await uploadDossiers(airtableBody);
 
   console.log("✅ Sucessfully updated airtable data");
 }
