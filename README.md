@@ -27,5 +27,5 @@ DS_API_TOKEN="xxxx" AIRTABLE_BASE_ID="xxxx" AIRTABLE_TABLE_ID="xxxx" AIRTABLE_AC
 Lancer le script de récupération des données :
 
 ```
-DS_API_TOKEN="xxxx" AIRTABLE_BASE_ID="xxxx" AIRTABLE_TABLE_ID="xxxx" AIRTABLE_ACCESS_TOKEN="xxxx" node main.js
+DS_API_TOKEN="xxxx" AIRTABLE_BASE_ID="xxxx" AIRTABLE_TABLE_ID="xxxx" AIRTABLE_ACCESS_TOKEN="xxxx" node fetch-form-data.js
 ```
