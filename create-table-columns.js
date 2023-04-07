@@ -55,6 +55,9 @@ const NEW_COLUMN_URL = `https://api.airtable.com/v0/meta/bases/${AIRTABLE_BASE_I
 const DS_TYPENAME_TO_AIRTABLE_TYPE = {
   PieceJustificativeChampDescriptor: "multipleAttachments",
   IntegerNumberChamp: "number",
+  EmailChampDescriptor: "email",
+  PhoneChampDescriptor: "phoneNumber",
+  TextareaChampDescriptor: "multilineText",
 };
 
 async function main() {
