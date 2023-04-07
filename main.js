@@ -21,6 +21,13 @@ const query = `
           champs {
             label
             stringValue
+            __typename
+            ... on PieceJustificativeChamp {
+              files {
+                filename
+                url
+              }
+            }
           }
           demandeur {
             __typename
@@ -111,7 +118,19 @@ function buildAirtableUpdateBody(dsData) {
           Demandeur: demandeur,
           "Demandeur (SIRET)": demandeurSiret,
           ...Object.fromEntries(
-            dossier.champs.map((c) => [c.label, c.stringValue])
+            dossier.champs.map((c) => {
+              let value = c.stringValue;
+
+              // File field
+              if (c.__typename === "PieceJustificativeChamp") {
+                value = c.files.map((f) => ({
+                  url: f.url,
+                  filename: f.filename,
+                }));
+              }
+
+              return [c.label, value];
+            })
           ),
         },
       };

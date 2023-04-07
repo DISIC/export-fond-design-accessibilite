@@ -24,6 +24,7 @@ const query = `
       publishedRevision {
         champDescriptors {
           label
+          __typename
         }
       }
     }
@@ -51,6 +52,11 @@ async function fetchFieldDescriptions() {
 
 const NEW_COLUMN_URL = `https://api.airtable.com/v0/meta/bases/${AIRTABLE_BASE_ID}/tables/${AIRTABLE_TABLE_ID}/fields`;
 
+const DS_TYPENAME_TO_AIRTABLE_TYPE = {
+  PieceJustificativeChampDescriptor: "multipleAttachments",
+  IntegerNumberChamp: "number",
+};
+
 async function main() {
   const data = await fetchFieldDescriptions();
 
@@ -77,7 +83,7 @@ async function main() {
       },
       ...fieldDescriptions.map((c) => ({
         name: c.label,
-        type: "singleLineText",
+        type: DS_TYPENAME_TO_AIRTABLE_TYPE[c.__typename] ?? "singleLineText",
       })),
     ],
     _.property("name")
