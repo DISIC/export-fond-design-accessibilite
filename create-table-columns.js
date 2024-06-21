@@ -1,28 +1,21 @@
 /**
- * @file Automatically add columns to airtable base based on fields returned by
+ * @file Automatically add columns to grist table based on fields returned by
  * demarches-simplifiees.fr API.
- *
- * __Note__: The fields generated from the `champDescriptors` items all have type
- * `singleLineText` by default. This is because the API doesnt return the type
- * of the field (short text, long text, number, date...)
- * You're free to manually change the types in Airtable.
  */
 
 import got from "got";
 import _ from "lodash-es";
+import { dsIdToGristId } from "./utils.js";
 
-const {
-  DS_API_TOKEN,
-  AIRTABLE_BASE_ID,
-  AIRTABLE_TABLE_ID,
-  AIRTABLE_ACCESS_TOKEN,
-} = process.env;
+const { DS_API_TOKEN, GRIST_DOC_ID, GRIST_TABLE_ID, GRIST_ACCESS_TOKEN } =
+  process.env;
 
 const query = `
   query Request {
-    demarche(number: 70307) {
+    demarche(number: 86391) {
       publishedRevision {
         champDescriptors {
+          id
           label
           __typename
         }
@@ -42,22 +35,21 @@ async function fetchFieldDescriptions() {
         Accept: "application/json",
         Authorization: `Bearer ${DS_API_TOKEN}`,
       },
-      json: {
-        query,
-        variables: {},
-      },
+      json: { query, variables: {} },
     })
     .json();
 }
 
-const NEW_COLUMN_URL = `https://api.airtable.com/v0/meta/bases/${AIRTABLE_BASE_ID}/tables/${AIRTABLE_TABLE_ID}/fields`;
-
 const DS_TYPENAME_TO_AIRTABLE_TYPE = {
-  PieceJustificativeChampDescriptor: "multipleAttachments",
-  IntegerNumberChamp: "number",
-  EmailChampDescriptor: "email",
-  PhoneChampDescriptor: "phoneNumber",
-  TextareaChampDescriptor: "multilineText",
+  // HeaderSectionChampDescriptor: "",
+  // TextChampDescriptor: "Text",
+  // EmailChampDescriptor: "Text",
+  // PhoneChampDescriptor: "Text",
+  // DropDownListChampDescriptor: "",
+  // MultipleDropDownListChampDescriptor: "",
+  // TextareaChampDescriptor: "Text",
+  NumberChampDescriptor: "Numeric",
+  PieceJustificativeChampDescriptor: "Attachments",
 };
 
 async function main() {
@@ -66,42 +58,45 @@ async function main() {
   const fieldDescriptions =
     data.data.demarche.publishedRevision.champDescriptors;
 
-  const columnDefinitions = _.uniqBy(
-    [
-      {
-        name: "Statut",
-        type: "singleLineText",
+  const columnDefinitions = [
+    {
+      id: "ds_id",
+      fields: { label: "DS ID", type: "Text" },
+    },
+    {
+      id: "statut",
+      fields: { label: "Statut", type: "Text" },
+    },
+    {
+      id: "pdf",
+      fields: { label: "PDF", type: "Text" },
+    },
+    {
+      id: "demandeur",
+      fields: { label: "Demandeur", type: "Text" },
+    },
+    {
+      id: "demandeur_siret",
+      fields: { label: "Demandeur (SIRET)", type: "Text" },
+    },
+    ...fieldDescriptions.map((c) => ({
+      id: dsIdToGristId(c.id),
+      fields: {
+        label: c.label,
+        type: DS_TYPENAME_TO_AIRTABLE_TYPE[c.__typename] ?? "Any",
       },
-      {
-        name: "PDF",
-        type: "url",
-      },
-      {
-        name: "Demandeur",
-        type: "singleLineText",
-      },
-      {
-        name: "Demandeur (SIRET)",
-        type: "singleLineText",
-      },
-      ...fieldDescriptions.map((c) => ({
-        name: c.label,
-        type: DS_TYPENAME_TO_AIRTABLE_TYPE[c.__typename] ?? "singleLineText",
-      })),
-    ],
-    _.property("name")
-  );
+    })),
+  ];
 
-  for (let i = 0; i < columnDefinitions.length; i++) {
-    const definition = columnDefinitions[i];
-    console.log('Creating the "', definition.name, '" field...');
-    await got.post(NEW_COLUMN_URL, {
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_ACCESS_TOKEN}`,
-      },
-      json: definition,
-    });
-  }
+  // console.log(columnDefinitions.map((c) => c.id));
+
+  console.log(`Creating ${columnDefinitions.length} columns on Grist...`);
+
+  const UPDATE_COLUMNS_URL = `https://docs.getgrist.com/api/docs/${GRIST_DOC_ID}/tables/${GRIST_TABLE_ID}/columns?replaceall=true`;
+  await got.put(UPDATE_COLUMNS_URL, {
+    json: { columns: columnDefinitions },
+    headers: { Authorization: `Bearer ${GRIST_ACCESS_TOKEN}` },
+  });
 
   console.log("✅ Done !");
 }
