@@ -1,6 +1,5 @@
 import ky from "ky";
 import _ from "lodash-es";
-import { dsIdToGristId } from "./utils.js";
 
 const {
   DS_API_TOKEN,
@@ -178,3 +177,12 @@ async function main() {
 }
 
 main();
+
+/**
+ *
+ * @param {string} dsId
+ * @returns string
+ */
+export function dsIdToGristId(dsId) {
+  return atob(dsId).toLowerCase().replace("-", "_");
+}
