@@ -21,12 +21,13 @@ jobs:
           node-version: 16
           cache: "yarn"
       - run: yarn install
-      - run: node fetch-form-data.js
+      - run: node ds-to-grist.js
         env: # Or as an environment variable
           DS_API_TOKEN: ${{ secrets.DS_API_TOKEN }}
-          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-          AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
-          AIRTABLE_ACCESS_TOKEN: ${{ secrets.AIRTABLE_ACCESS_TOKEN }}
+          GRIST_DOC_ID: ${{ secrets.GRIST_DOC_ID }}
+          GRIST_TABLE_ID: ${{ secrets.GRIST_TABLE_ID }}
+          GRIST_ACCESS_TOKEN: ${{ secrets.GRIST_ACCESS_TOKEN }}
+          DS_DEMARCHE_ID: ${{ secrets.DS_DEMARCHE_ID }}
       # Prevent workflow from getting disabled after 60 days of repository inactivity by making a commit every 50 days
       # https://github.com/marketplace/actions/keepalive-workflow
       - uses: gautamkrishnar/keepalive-workflow@v1
